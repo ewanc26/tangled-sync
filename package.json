@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "Sync GitHub repos to Tangled with ATProto records",
   "main": "src/index.ts",
+  "type": "module",
   "scripts": {
     "sync": "ts-node src/index.ts"
   },

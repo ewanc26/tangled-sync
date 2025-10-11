@@ -1,21 +1,27 @@
-
-import { BskyAgent } from "@atproto/api";
-import * as child_process from "child_process";
-import * as fs from "fs";
-import * as path from "path";
+import { AtpAgent } from "@atproto/api";
+import { execSync, ExecSyncOptions } from "child_process";
+import fs from "fs";
+import path from "path";
 
 const BASE32_SORTABLE = '234567abcdefghijklmnopqrstuvwxyz';
 
 export function run(cmd: string, cwd?: string): string {
-  // Use shell: true for commands that contain pipes or shell built-ins
-  return child_process.execSync(cmd, { cwd, stdio: "pipe", shell: true }).toString().trim();
+  const options: ExecSyncOptions = { 
+    cwd, 
+    stdio: "pipe", 
+    shell: process.env.SHELL || "/bin/bash", 
+    encoding: "utf-8" 
+  };
+  return execSync(cmd, options).toString().trim();
 }
 
 export function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-function generateClockId(): number { return Math.floor(Math.random() * 1024); }
+function generateClockId(): number { 
+  return Math.floor(Math.random() * 1024); 
+}
 
 function toBase32Sortable(num: bigint): string {
   if (num === 0n) return '2222222222222';
@@ -34,16 +40,22 @@ export function generateTid(): string {
   return toBase32Sortable(tidBigInt);
 }
 
-export async function ensureTangledRecord(agent: BskyAgent, atprotoDid: string, githubUser: string, repoName: string, description?: string) {
-  let tid: string;
+export async function ensureTangledRecord(agent: AtpAgent, atprotoDid: string, githubUser: string, repoName: string, description?: string) {
+  let tid: string = generateTid(); 
   let exists = true;
+  
   while (exists) {
     tid = generateTid();
     try {
       await agent.api.com.atproto.repo.getRecord({ repo: atprotoDid, collection: "sh.tangled.repo", rkey: tid });
       exists = true;
-    } catch {
-      exists = false;
+    } catch (e: any) {
+      if (e.message && e.message.includes('Record not found')) {
+        exists = false;
+      } else {
+        console.error("Error checking ATProto record existence:", e);
+        throw e; 
+      }
     }
   }
 
@@ -54,7 +66,7 @@ export async function ensureTangledRecord(agent: BskyAgent, atprotoDid: string, 
     createdAt: new Date().toISOString(),
     description: description || repoName,
     labels: [],
-    source: `https://github.com/${github_user}/${repoName}`,
+    source: `https://github.com/${githubUser}/${repoName}`,
     spindle: "",
   };
 
