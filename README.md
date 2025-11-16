@@ -10,7 +10,13 @@ This tool is particularly useful for developers and organisations that want a de
 
 ### Configuration
 
-Before running any scripts, you need to configure the project. See `src/.env` (or `src/config.env` if you prefer to keep a template) for the required environment variables:
+Before running any scripts, you need to configure the project. Create a `src/.env` file based on `src/.env.example`:
+
+```bash
+cp src/.env.example src/.env
+```
+
+Then edit `src/.env` with your actual values:
 
 * `BASE_DIR` – the local directory where GitHub repositories will be cloned.
 * `GITHUB_USER` – your GitHub username or organisation.
@@ -45,9 +51,23 @@ Without proper SSH authentication, repository creation and pushing will fail.
 
 ---
 
+### Testing AT Proto Connection
+
+**Before running the full sync**, test your AT Proto connection:
+
+```bash
+npm run test-atproto
+```
+
+This will:
+- Verify your Bluesky credentials
+- Confirm your DID matches the configuration
+- List any existing `sh.tangled.repo` records
+- Validate the connection to the PDS
+
 ### Running the Sync Script
 
-Once configuration and SSH verification are complete, run:
+Once configuration, SSH verification, and AT Proto testing are complete, run:
 
 ```bash
 npm run sync

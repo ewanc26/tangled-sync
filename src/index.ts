@@ -6,6 +6,8 @@ import { execSync } from "child_process";
 
 dotenv.config({ path: "./src/.env" });
 
+const FORCE_SYNC = process.argv.includes("--force");
+
 const BASE_DIR = process.env.BASE_DIR!;
 const GITHUB_USER = process.env.GITHUB_USER!;
 const ATPROTO_DID = process.env.ATPROTO_DID!;
@@ -17,9 +19,19 @@ const agent = new AtpAgent({ service: BLUESKY_PDS });
 async function login() {
   const username = process.env.BLUESKY_USERNAME;
   const password = process.env.BLUESKY_PASSWORD;
-  if (!username || !password) throw new Error("Missing Bluesky credentials");
-  await agent.login({ identifier: username, password });
-  console.log("[LOGIN] Logged in to Bluesky");
+  if (!username || !password) {
+    throw new Error("Missing Bluesky credentials. Please set BLUESKY_USERNAME and BLUESKY_PASSWORD in src/.env");
+  }
+  
+  try {
+    const response = await agent.login({ identifier: username, password });
+    console.log(`[LOGIN] Successfully logged in to AT Proto as ${response.data.did}`);
+    console.log(`[LOGIN] Session handle: ${response.data.handle}`);
+    return response;
+  } catch (error: any) {
+    console.error("[ERROR] Failed to login to AT Proto:", error.message);
+    throw error;
+  }
 }
 
 async function getGitHubRepos(): Promise<{ clone_url: string; name: string; description?: string }[]> {
@@ -90,16 +102,18 @@ function generateTid(): string {
   return toBase32Sortable(tidBigInt);
 }
 
-// Tangled repo schema typing
+// Tangled repo schema typing (matches sh.tangled.repo lexicon)
 interface TangledRepoRecord {
   $type: "sh.tangled.repo";
-  knot: string;
-  name: string;
-  spindle: string;
-  description: string;
-  source: string;
-  labels: string[];
-  createdAt: string;
+  name: string;          // required
+  knot: string;          // required
+  createdAt: string;     // required (ISO 8601 datetime)
+  spindle?: string;      // optional CI runner
+  description?: string;  // optional, max 140 graphemes
+  website?: string;      // optional URI
+  topics?: string[];     // optional array of topics
+  source?: string;       // optional source URI
+  labels?: string[];     // optional array of at-uri labels
 }
 
 // Cache for existing repo records
@@ -111,8 +125,10 @@ async function ensureTangledRecord(
   githubUser: string,
   repoName: string,
   description?: string
-): Promise<string> {
-  if (recordCache[repoName]) return recordCache[repoName];
+): Promise<{ tid: string; existed: boolean }> {
+  if (recordCache[repoName]) {
+    return { tid: recordCache[repoName], existed: true };
+  }
 
   let cursor: string | undefined = undefined;
   let tid: string | null = null;
@@ -131,7 +147,7 @@ async function ensureTangledRecord(
         tid = record.rkey;
         recordCache[repoName] = tid;
         console.log(`[FOUND] Existing record for ${repoName} (TID: ${tid})`);
-        break;
+        return { tid, existed: true };
       }
     }
 
@@ -142,27 +158,33 @@ async function ensureTangledRecord(
     tid = generateTid();
     const record: TangledRepoRecord = {
       $type: "sh.tangled.repo",
-      knot: "knot1.tangled.sh",
       name: repoName,
-      spindle: "",
+      knot: "knot1.tangled.sh",
+      createdAt: new Date().toISOString(),
       description: description ?? repoName,
       source: `https://github.com/${githubUser}/${repoName}`,
       labels: [],
-      createdAt: new Date().toISOString(),
     };
 
-    await agent.api.com.atproto.repo.putRecord({
-      repo: atprotoDid,
-      collection: "sh.tangled.repo",
-      rkey: tid,
-      record,
-    });
+    try {
+      const result = await agent.api.com.atproto.repo.putRecord({
+        repo: atprotoDid,
+        collection: "sh.tangled.repo",
+        rkey: tid,
+        record,
+      });
+      console.log(`[CREATED] ATProto record URI: ${result.data.uri}`);
+    } catch (error: any) {
+      console.error(`[ERROR] Failed to create ATProto record for ${repoName}:`, error.message);
+      throw error;
+    }
 
     recordCache[repoName] = tid;
     console.log(`[CREATED] Tangled record for ${repoName} (TID: ${tid})`);
+    return { tid, existed: false };
   }
 
-  return tid;
+  return { tid, existed: false };
 }
 
 function updateReadme(baseDir: string, repoName: string, atprotoDid: string) {
@@ -187,23 +209,110 @@ Mirrored on Tangled: https://tangled.org/${atprotoDid}/${repoName}
 }
 
 async function main() {
+  console.log("[STARTUP] Starting Tangled Sync...");
+  if (FORCE_SYNC) {
+    console.log("[MODE] Force sync enabled - will process all repos");
+  }
+  console.log(`[CONFIG] Base directory: ${BASE_DIR}`);
+  console.log(`[CONFIG] GitHub user: ${GITHUB_USER}`);
+  console.log(`[CONFIG] ATProto DID: ${ATPROTO_DID}`);
+  console.log(`[CONFIG] PDS: ${BLUESKY_PDS}`);
+  
+  // Login to AT Proto
   await login();
+  
+  // Ensure base directory exists
   ensureDir(BASE_DIR);
+  
+  // Fetch GitHub repositories
+  console.log(`[GITHUB] Fetching repositories for ${GITHUB_USER}...`);
   const repos = await getGitHubRepos();
+  console.log(`[GITHUB] Found ${repos.length} repositories`);
+  
+  let reposToProcess = repos;
+  let skippedRepos: typeof repos = [];
+  
+  if (!FORCE_SYNC) {
+    // Fetch all existing Tangled records upfront
+    console.log(`[ATPROTO] Fetching existing Tangled records...`);
+    let cursor: string | undefined = undefined;
+    const existingRepos = new Set<string>();
+    
+    do {
+      const res: any = await agent.api.com.atproto.repo.listRecords({
+        repo: ATPROTO_DID,
+        collection: "sh.tangled.repo",
+        limit: 100,
+        cursor,
+      });
+      
+      for (const record of res.data.records) {
+        const value = record.value as TangledRepoRecord;
+        if (value.name) {
+          existingRepos.add(value.name);
+          recordCache[value.name] = record.rkey;
+        }
+      }
+      
+      cursor = res.data.cursor;
+    } while (cursor);
+    
+    console.log(`[ATPROTO] Found ${existingRepos.size} existing Tangled records`);
+    
+    // Separate repos into new and existing
+    reposToProcess = repos.filter(r => !existingRepos.has(r.name));
+    skippedRepos = repos.filter(r => existingRepos.has(r.name));
+    
+    console.log(`[INFO] ${reposToProcess.length} new repos to sync`);
+    console.log(`[INFO] ${skippedRepos.length} repos already synced (skipping)\n`);
+    
+    if (skippedRepos.length > 0) {
+      console.log("[SKIPPED] The following repos already have AT Proto records:");
+      skippedRepos.forEach(r => console.log(`  - ${r.name}`));
+      console.log("");
+    }
+  } else {
+    console.log("[INFO] Processing all ${repos.length} repos (force sync mode)\n");
+  }
 
-  for (const { clone_url, name: repoName, description } of repos) {
-    console.log(`[PROGRESS] Processing ${repoName}`);
+  let syncedCount = 0;
+  let errorCount = 0;
+
+  for (const { clone_url, name: repoName, description } of reposToProcess) {
+    console.log(`\n[PROGRESS] Processing ${repoName} (${syncedCount + 1}/${reposToProcess.length})`);
     const repoDir = path.join(BASE_DIR, repoName);
 
-    if (!fs.existsSync(repoDir)) {
-      run(`git clone ${clone_url} ${repoDir}`);
-      console.log(`[CLONE] ${repoName}`);
-    }
+    try {
+      if (!fs.existsSync(repoDir)) {
+        run(`git clone ${clone_url} ${repoDir}`);
+        console.log(`[CLONE] ${repoName}`);
+      } else {
+        console.log(`[EXISTS] ${repoName} already cloned`);
+      }
 
-    await ensureTangledRemoteAndPush(repoDir, repoName, clone_url);
-    updateReadme(BASE_DIR, repoName, ATPROTO_DID);
-    await ensureTangledRecord(agent, ATPROTO_DID, GITHUB_USER, repoName, description);
+      await ensureTangledRemoteAndPush(repoDir, repoName, clone_url);
+      updateReadme(BASE_DIR, repoName, ATPROTO_DID);
+      const result = await ensureTangledRecord(agent, ATPROTO_DID, GITHUB_USER, repoName, description);
+      
+      if (!result.existed) {
+        syncedCount++;
+      }
+    } catch (error: any) {
+      console.error(`[ERROR] Failed to sync ${repoName}: ${error.message}`);
+      errorCount++;
+    }
   }
+  
+  console.log(`\n${'='.repeat(50)}`);
+  console.log(`[COMPLETE] Sync finished!`);
+  console.log(`  ✅ New repos synced: ${syncedCount}`);
+  if (!FORCE_SYNC) {
+    console.log(`  ⏭️  Repos skipped: ${skippedRepos.length}`);
+  }
+  if (errorCount > 0) {
+    console.log(`  ❌ Errors: ${errorCount}`);
+  }
+  console.log(`${'='.repeat(50)}`);
 }
 
 main().catch(console.error);
