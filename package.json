@@ -2,15 +2,21 @@
   "name": "tangled-sync",
   "version": "1.0.0",
   "description": "Sync GitHub repos to Tangled with ATProto records",
+  "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "sync": "ts-node src/index.ts"
+    "check": "ts-node src/check.ts",
+    "validate": "ts-node src/validate-config.ts",
+    "test-atproto": "ts-node src/test-atproto.ts",
+    "sync": "ts-node src/index.ts",
+    "sync:force": "ts-node src/index.ts --force"
   },
   "dependencies": {
     "@atproto/api": "^0.17.2",
     "dotenv": "^16.0.0"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
