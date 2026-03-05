@@ -118,3 +118,7 @@ If you plan to contribute:
 ---
 
 **Tangled Sync** bridges GitHub and Tangled efficiently, providing automatic mirroring, record management, and easy discoverability. Following these steps will ensure a smooth, automated workflow for syncing and publishing your repositories.
+
+## ☕ Support
+
+If you found this useful, consider [buying me a ko-fi](https://ko-fi.com/ewancroft)!
