@@ -1,3 +1,11 @@
+/**
+ * Health-check runner for tangled-sync.
+ *
+ * Validates config, ATProto credentials, SSH access to Tangled,
+ * GitHub API reachability, and local dependencies. Exits non-zero
+ * if any required check fails.
+ */
+
 import { loadConfig, runConfigChecks } from "./lib/config";
 import { createAgent } from "./lib/atproto";
 import { checkSshConnection } from "./lib/checks/ssh";

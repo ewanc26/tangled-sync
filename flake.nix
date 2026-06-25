@@ -21,6 +21,7 @@
         }
       );
 
+      # Nix fmt consistent with RFC-style (what nixpkgs uses)
       formatter = forAllSystems (pkgs: pkgs.nixfmt-rfc-style);
     };
 }

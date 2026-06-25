@@ -1,3 +1,11 @@
+/**
+ * Shared utilities for tangled-sync.
+ *
+ * Filesystem helpers, a synchronous shell runner, TID generation
+ * (AT Protocol timestamp-identifiers), and the TangledRepoRecord
+ * type definition.
+ */
+
 import fs from "fs";
 import { execSync } from "child_process";
 
@@ -20,6 +28,11 @@ export function run(cmd: string, cwd?: string): string {
 }
 
 // ── TID generation ─────────────────────────────────────────────
+
+// AT Protocol TIDs are sortable base32 strings: microsecond timestamp
+// (shifted left 10) OR'd with a clock-id for uniqueness within the
+// same microsecond.  The custom alphabet skips 0/1 to avoid lexicographic
+// surprises.
 
 const BASE32_SORTABLE = "234567abcdefghijklmnopqrstuvwxyz";
 

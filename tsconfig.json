@@ -1,16 +1,16 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "target": "ES2022",                // Latest Node LTS supports ES2022 natively
+    "module": "NodeNext",              // ESM-compatible module system for Node
+    "moduleResolution": "NodeNext",    // Resolves .js extensions in ESM imports
     "rootDir": "./src",
     "outDir": "./dist",
-    "strict": true,
+    "strict": true,                    // Catch null/undefined issues at compile time
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
+    "skipLibCheck": true,              // Faster compilation, trust installed typings
     "resolveJsonModule": true,
-    "noImplicitAny": true,
+    "noImplicitAny": true,             // No hidden `any` types
     "noFallthroughCasesInSwitch": true,
     "allowSyntheticDefaultImports": true,
     "types": ["node"],
@@ -20,7 +20,7 @@
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"],
   "ts-node": {
-    "esm": true,
+    "esm": true,                       // ts-node ESM mode for `type: "module"` package
     "experimentalSpecifierResolution": "node"
   }
 }

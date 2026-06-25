@@ -1,3 +1,11 @@
+/**
+ * tangled-sync: synchronise GitHub repositories to Tangled knotwork.
+ *
+ * Discovers repos for a GitHub user, clones any not yet on disk,
+ * adds a Tangled git remote, pushes main, and creates an ATProto
+ * record (sh.tangled.repo) so the Tangled network knows about it.
+ */
+
 import { loadConfig } from "./lib/config";
 import { createAgent } from "./lib/atproto";
 import { ensureDir, run, generateTid, TangledRepoRecord } from "./lib/utils";
@@ -6,10 +14,12 @@ import path from "path";
 
 loadConfig();
 
+// Re-process all repos regardless of existing ATProto records
 const FORCE_SYNC = process.argv.includes("--force");
 const BASE_DIR = process.env.BASE_DIR!;
 const GITHUB_USER = process.env.GITHUB_USER!;
 const ATPROTO_DID = process.env.ATPROTO_DID!;
+// Tangled uses the ATProto DID as a namespace for git remotes
 const TANGLED_BASE_URL = `git@tangled.sh:${ATPROTO_DID}`;
 
 // ── GitHub repo fetching ───────────────────────────────────────

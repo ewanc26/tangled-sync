@@ -1,3 +1,4 @@
+# Run Prettier on staged files before every commit.
 repos:
   - repo: local
     hooks:

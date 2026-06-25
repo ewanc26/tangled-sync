@@ -1,3 +1,11 @@
+/**
+ * Standalone ATProto connection test.
+ *
+ * Logs in with the configured Bluesky credentials, verifies the
+ * returned DID matches ATPROTO_DID, and lists any existing
+ * sh.tangled.repo records.
+ */
+
 import { AtpAgent } from "@atproto/api";
 import dotenv from "dotenv";
 

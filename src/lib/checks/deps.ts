@@ -1,3 +1,11 @@
+/**
+ * Runtime dependency check for tangled-sync.
+ *
+ * Verifies the two critical npm packages (@atproto/api, dotenv)
+ * are resolvable via dynamic import.  The health-check runner
+ * calls this before attempting any network operation.
+ */
+
 export interface CheckResult {
   status: boolean;
   message: string;

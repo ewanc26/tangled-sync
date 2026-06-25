@@ -1,3 +1,10 @@
+/**
+ * AT Protocol client setup for tangled-sync.
+ *
+ * Thin wrapper around @atproto/api — logs in once and returns an
+ * authenticated agent that the main sync loop uses to create records.
+ */
+
 import { AtpAgent } from "@atproto/api";
 
 /** Create and authenticate an AtpAgent from environment variables. */

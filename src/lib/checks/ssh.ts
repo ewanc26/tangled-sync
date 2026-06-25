@@ -1,3 +1,11 @@
+/**
+ * SSH connectivity check for Tangled.
+ *
+ * Runs `ssh -T git@tangled.sh` and inspects the response.
+ * Tangled's SSH greeting includes "successfully authenticated"
+ * on success or "Hi <user>" — either signals a working key.
+ */
+
 import { execSync } from "child_process";
 
 export interface CheckResult {

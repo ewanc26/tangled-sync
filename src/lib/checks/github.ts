@@ -1,3 +1,10 @@
+/**
+ * GitHub API reachability check for the configured user.
+ *
+ * Hits the public user endpoint — verifies the GITHUB_USER exists
+ * and the API is reachable from this network.
+ */
+
 import { execSync } from "child_process";
 
 export interface CheckResult {

@@ -1,3 +1,10 @@
+/**
+ * Configuration loading and validation for tangled-sync.
+ *
+ * Loads .env, then exposes checks for every required variable —
+ * used by both the main sync and the health-check runner.
+ */
+
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
