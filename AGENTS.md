@@ -22,3 +22,15 @@ Guidance for agents working on the archived `tangled-sync` repository. The maint
 ## Validation
 
 For an explicitly requested archival fix, use `npm install` and `npx tsc --noEmit`; repair the missing validation entry point or script before claiming `npm run validate` works. Treat `npm run check` and `npm run test-atproto` as live network/auth probes, not tests, and do not run `npm run sync` or `sync:force` for routine validation. Exercise selection, shell argument handling, dirty-worktree refusal, push failure, README commits, pagination, and AT Protocol writes with mocked clients and disposable repositories. Implement the maintained correction in `pkgs` first when applicable.
+
+<!-- allowed-agents -->
+## Allowed agents
+
+Only **Claude** (Anthropic) and **Mistral** (Mistral AI) may be used as coding agents in this repository. This rule supersedes any earlier agent-attribution guidance in this file.
+
+- Agent-assisted commits must credit only one of those agents:
+  - `Co-Authored-By: Claude <noreply@anthropic.com>`
+  - `Co-Authored-By: Mistral Vibe <vibe@mistral.ai>`
+- Allowed agent footers are `🤖 Generated with [Claude Code](https://claude.com/claude-code)` and `🤖 Generated with [Mistral Vibe](https://mistral.ai)`.
+- Do not add `Co-Authored-By:` trailers, `Generated with` footers, author names, or committer identities for any other agent or AI tool.
+- Do not credit another agent in commit metadata.
